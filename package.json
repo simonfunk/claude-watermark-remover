@@ -1,7 +1,7 @@
 {
   "name": "claude-watermark-remover",
   "version": "0.1.0",
-  "description": "Privacy-first AI text hygiene, inspection, and rewrite preparation toolkit",
+  "description": "Claude watermark remover for inspecting hidden Unicode artifacts, cleaning text locally, and preparing controlled rewrites",
   "type": "module",
   "bin": {
     "claude-watermark-remover": "./dist/cli.js"
