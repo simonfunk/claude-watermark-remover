@@ -1,0 +1,40 @@
+{
+  "name": "ai-content-cleaner",
+  "version": "0.1.0",
+  "description": "Privacy-first AI text hygiene, inspection, and rewrite preparation toolkit",
+  "type": "module",
+  "bin": {
+    "ai-content-cleaner": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "check": "npm test && npm run build",
+    "dev": "node --import tsx src/cli.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ai-content",
+    "unicode",
+    "text-cleaner",
+    "watermark",
+    "provenance",
+    "privacy"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}
