@@ -48,6 +48,41 @@ test("CLI rejects unknown commands with a non-zero exit", () => {
   assert.match(result.stderr, /Usage:/);
 });
 
+test("CLI rejects unsupported flags instead of silently ignoring them", () => {
+  const result = runCli(["provenance", "tests/fixtures/images/clean.jpg", "--nonsense"]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unsupported option/i);
+});
+
+test("CLI report emits a schema-versioned JSON report", () => {
+  const result = runCli(["report", "--aggressive"], "A‌B‍ C");
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout) as {
+    schemaVersion: string;
+    mode: string;
+    cleanedText: string;
+  };
+  assert.equal(report.schemaVersion, "1.0.0");
+  assert.equal(report.mode, "aggressive");
+  assert.equal(report.cleanedText, "AB C");
+});
+
+test("CLI provenance inspects a PNG for C2PA/XMP/EXIF markers without altering it", () => {
+  const result = runCli(["provenance", "tests/fixtures/images/c2pa.png", "--json"]);
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout) as {
+    fileType: string;
+    hasC2paCandidate: boolean;
+    verification: { status: string };
+  };
+  assert.equal(report.fileType, "png");
+  assert.equal(report.hasC2paCandidate, true);
+  assert.equal(report.verification.status, "not-performed");
+});
+
 test("CLI verify compares a source and rewrite end to end", () => {
   const result = runCli([
     "verify",

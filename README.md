@@ -33,6 +33,49 @@ npm run check
 
 Node.js 20 or newer is required.
 
+## Browser UI
+
+A standalone, dependency-light local UI is served directly from this repository — no bundler, no
+external CDN, no account.
+
+```bash
+npm start
+```
+
+This builds the library and serves `web/` at `http://localhost:4300/`. Inspecting, cleaning, and
+the before/after diff all run **entirely in your browser tab**; nothing about your text is sent
+anywhere unless you explicitly open the optional rewrite panel and submit a request (see below).
+
+Features:
+
+- paste text or upload a `.txt`/`.md` file
+- safe (default) and aggressive cleaning modes, matching the CLI/library behavior
+- a visible findings list (kind, code point, index, description) and a color-coded before/after
+  diff showing which characters were removed, normalized, or preserved
+- copy the cleaned text to the clipboard, or download it as `.txt`
+- download a machine-readable JSON report (see below)
+- an inspect-only image provenance panel for PNG/JPEG/SVG (see C2PA section below)
+- an optional, off-by-default panel to send text to a self-hosted or third-party rewrite provider,
+  with an explicit disclosure banner and a required consent checkbox before anything is sent
+
+Run `npm run serve` instead of `npm start` to serve an existing `dist/` build without rebuilding.
+
+## JSON reports
+
+`buildReport()` (library) and `claude-watermark-remover report` (CLI) produce a machine-readable
+report describing one inspection/clean pass: findings, counts, the cleaned text, and the honest
+statistical-watermark disclaimer. The browser UI's "Download JSON report" button produces the same
+shape.
+
+The report format is versioned and checked in as a JSON Schema at
+[`schema/report.schema.json`](schema/report.schema.json) (draft 2020-12). `tests/report.test.ts`
+validates real report output against it with [ajv](https://ajv.js.org/), so the schema and the
+implementation cannot silently drift apart.
+
+```bash
+npm run dev -- report draft.md --aggressive > report.json
+```
+
 ## CLI
 
 Read from stdin:
@@ -71,6 +114,19 @@ npm run dev -- verify original.md rewritten.md --json
 
 `verify` exits with status `0` when protected facts and Markdown structure are preserved, and status `2` when something changed or disappeared.
 
+Generate a JSON report (see [JSON reports](#json-reports)):
+
+```bash
+npm run dev -- report draft.md
+npm run dev -- report draft.md --aggressive
+```
+
+Inspect an image for embedded provenance markers (see [Image provenance](#image-provenance-c2pa)):
+
+```bash
+npm run dev -- provenance photo.jpg --json
+```
+
 After an external rewrite, the library API can verify preserved facts:
 
 ```ts
@@ -91,8 +147,77 @@ import {
   buildRewritePrompt,
   extractProtectedFacts,
   comparePreservedFacts,
+  buildReport,
+  createOpenAiCompatibleAdapter,
+  inspectProvenance,
 } from "claude-watermark-remover";
 ```
+
+## Rewrite provider adapters
+
+Substantial rewriting can optionally be delegated to an LLM through a small, pluggable adapter
+architecture (`RewriteProvider` in [`src/provider.ts`](src/provider.ts)) instead of the
+copy-a-prompt-yourself workflow above. This is entirely opt-in — no core feature (inspect, clean,
+report, C2PA inspection) ever needs it or any credentials.
+
+```ts
+import { createOpenAiCompatibleAdapter } from "claude-watermark-remover";
+
+const adapter = createOpenAiCompatibleAdapter({
+  endpoint: "http://localhost:11434/v1/chat/completions", // any OpenAI-compatible server, local or remote
+  model: "llama3.1",
+  // apiKey is optional — never required for local/self-hosted servers
+  timeoutMs: 30_000, // default; also enforced via AbortSignal
+  maxInputCharacters: 20_000, // default input size limit
+});
+
+const controller = new AbortController();
+const outcome = await adapter.rewrite({
+  text: source,
+  signal: controller.signal, // caller-controlled cancellation, independent of the timeout
+});
+
+console.log(outcome.verification.ok); // whether protected facts/structure survived the rewrite
+```
+
+Design points, all covered by `tests/provider.test.ts` with a mocked `fetch` (no live network calls
+run in tests, ever):
+
+- **No required credentials.** `apiKey` is optional and omitted entirely from the request when not set.
+- **No source-text logging.** The adapter never calls `console.*` with request/response content; errors carry only generic, text-free messages.
+- **Explicit disclosure.** `adapter.disclosure` exposes `{ providerName, endpoint, model, sendsSourceTextToThirdParty: true, retentionNote }` so callers (including the browser UI) can show the user exactly where their text is going before sending it.
+- **Timeouts and cancellation.** A built-in timeout (default 30s) and an optional caller-supplied `AbortSignal` are combined; either firing aborts the in-flight request with a distinct, catchable error (`RewriteTimeoutError` vs. `RewriteAbortedError`).
+- **Input limits.** Requests over `maxInputCharacters` are rejected before any network call (`RewriteInputTooLargeError`).
+- **Post-rewrite preservation verification.** Every successful call runs `comparePreservedFacts()` against the response and returns it as `outcome.verification`, so a rewrite that drops a number, URL, quotation, or Markdown link is flagged automatically.
+
+The browser UI's rewrite panel is collapsed by default, shows the same disclosure text, and
+requires an explicit consent checkbox before the "Send" button is enabled.
+
+## Image provenance (C2PA)
+
+`inspectProvenance()` (library) and `claude-watermark-remover provenance` (CLI) do a byte-level,
+**inspect-only** scan of a PNG, JPEG, or SVG file for provenance markers: a C2PA/JUMBF box (PNG's
+private `caBX` chunk, JPEG's `APP11` segments, or an SVG `c2pa:` namespace/element), embedded XMP
+metadata, EXIF metadata, and Photoshop IPTC metadata.
+
+```ts
+import { inspectProvenance } from "claude-watermark-remover";
+import { readFile } from "node:fs/promises";
+
+const bytes = await readFile("photo.jpg");
+const result = inspectProvenance(bytes, "photo.jpg");
+console.log(result.hasC2paCandidate, result.signals, result.verification);
+```
+
+This module intentionally does **not** claim to verify a C2PA manifest's cryptographic claim
+signature or certificate chain — that requires a conformant C2PA library or tool (for example
+[`c2patool`](https://opensource.contentauthenticity.org/docs/c2patool/)), which this dependency-light
+project does not bundle. `result.verification.status` is always `"not-performed"`, with an
+explanation, rather than a guess: presence of a marker is not proof of a valid manifest, and its
+absence is not proof a file has no provenance history.
+
+There is no removal or stripping function anywhere in this module (`tests/c2pa.test.ts` asserts
+this directly) — inspection never modifies the file, by design.
 
 ### Honest result language
 
@@ -106,10 +231,13 @@ Do not say:
 
 ## Privacy and security
 
-- `inspect`, `clean`, and fact-preservation checks run locally.
+- `inspect`, `clean`, `report`, `provenance`, and fact-preservation checks run entirely locally — in the CLI, the library, and the browser UI.
 - `prompt` only generates a request locally; it does not call an API.
-- No telemetry, analytics, accounts, or storage are included.
-- Source text inside the generated prompt is explicitly treated as untrusted data to reduce prompt-injection risk.
+- The rewrite provider adapter (`createOpenAiCompatibleAdapter` / the UI's rewrite panel) is the **only** feature that sends text over the network, is off by default, never requires credentials, and always discloses the destination endpoint before sending.
+- No telemetry, analytics, accounts, or storage are included anywhere in this project, including the browser UI.
+- Source text inside the generated prompt (and inside rewrite requests) is explicitly treated as untrusted data to reduce prompt-injection risk.
+- The rewrite adapter never logs source text, enforces an input size limit, and supports timeouts and cancellation.
+- Image provenance inspection never modifies the inspected file and never claims to cryptographically verify a manifest.
 - Never paste confidential text into a third-party rewrite model unless its data handling is acceptable for that content.
 
 See [SECURITY.md](SECURITY.md) for reporting and deployment guidance.
@@ -118,19 +246,35 @@ See [SECURITY.md](SECURITY.md) for reporting and deployment guidance.
 
 ```bash
 npm install --include=dev
-npm test
-npm run build
-npm run check
+npm test              # unit + integration tests (text, rewrite, CLI, report/schema, provider, C2PA, static server)
+npm run build          # compile TypeScript to dist/
+npm run check           # test + build
+npm start                # build, then serve the browser UI at http://localhost:4300/
+npm run serve             # serve an existing dist/ build without rebuilding
+npm run test:e2e           # build, then run the Playwright browser E2E suite against the production build
+npm run verify               # check + test:e2e — everything, end to end
+npm run fixtures:images       # regenerate the binary C2PA/EXIF/XMP test fixtures under tests/fixtures/images/
 ```
 
-The test suite covers Unicode inspection/cleaning, multilingual preservation, rewrite-prompt boundaries, fact extraction/comparison, and CLI behavior.
+`npm run test:e2e` downloads/uses a local Chromium via Playwright; run `npx playwright install --with-deps chromium` once first if it is not already installed.
 
-## Roadmap
+The unit/integration suite covers Unicode inspection/cleaning, multilingual preservation,
+rewrite-prompt boundaries, fact extraction/comparison, CLI behavior, JSON report generation against
+the checked-in schema, the rewrite provider adapter (with `fetch` mocked — no live or paid API
+calls are ever made in tests), C2PA/XMP/EXIF provenance inspection against representative binary
+fixtures, and the static file server. The Playwright suite drives the actual served production
+build in a real browser: pasting/uploading text, safe vs. aggressive cleaning, the diff view,
+clipboard copy, file downloads, image provenance upload, and the rewrite panel's disclosure/consent
+gating (with the network call intercepted by Playwright, never live).
 
-- local browser demo with fully local inspection, before/after diff, and downloadable reports
-- optional provider adapters with explicit retention disclosures
-- C2PA inspection without destructive removal defaults
-- machine-readable JSON Schema for reports
+## Status
+
+Originally tracked as a roadmap, all of the following are implemented and covered by tests:
+
+- a local browser UI with fully local inspection, safe/aggressive modes, a before/after diff, copy, and downloadable text/JSON
+- a versioned, schema-validated JSON report format
+- an optional, credential-free-by-default rewrite provider adapter architecture with an OpenAI-compatible adapter, explicit disclosure, timeouts/cancellation, input limits, and post-rewrite fact-preservation verification
+- inspect-only C2PA/XMP/EXIF provenance inspection for PNG/JPEG/SVG, with honest (not-performed) signature verification status
 
 ## Responsible use
 

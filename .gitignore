@@ -6,3 +6,7 @@ dist/
 .env.*
 !.env.example
 coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

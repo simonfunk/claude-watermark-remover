@@ -1,7 +1,7 @@
 {
   "name": "claude-watermark-remover",
   "version": "0.1.0",
-  "description": "Claude watermark remover for inspecting hidden Unicode artifacts, cleaning text locally, and preparing controlled rewrites",
+  "description": "Claude watermark remover for inspecting hidden Unicode artifacts, cleaning text locally, running a local browser UI, generating schema-validated JSON reports, inspecting C2PA/XMP/EXIF image provenance, and preparing controlled rewrites",
   "type": "module",
   "bin": {
     "claude-watermark-remover": "./dist/cli.js"
@@ -11,6 +11,9 @@
   },
   "files": [
     "dist",
+    "schema",
+    "scripts/serve.mjs",
+    "web",
     "README.md",
     "LICENSE"
   ],
@@ -18,7 +21,12 @@
     "build": "tsc -p tsconfig.json",
     "test": "node --import tsx --test tests/*.test.ts",
     "check": "npm test && npm run build",
-    "dev": "node --import tsx src/cli.ts"
+    "dev": "node --import tsx src/cli.ts",
+    "serve": "node scripts/serve.mjs",
+    "start": "npm run serve",
+    "fixtures:images": "node scripts/generate-image-fixtures.mjs",
+    "test:e2e": "npm run build && playwright test",
+    "verify": "npm run check && npm run test:e2e"
   },
   "engines": {
     "node": ">=20"
@@ -32,11 +40,16 @@
     "text-cleaner",
     "watermark",
     "provenance",
+    "c2pa",
+    "json-schema",
     "privacy"
   ],
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^24.0.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   }

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/simonfunk/claude-watermark-remover/schema/report.schema.json",
+  "title": "Claude Watermark Remover report",
+  "description": "Machine-readable output of a local inspection/clean pass. Generated entirely on the user's device.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "tool",
+    "source",
+    "mode",
+    "findings",
+    "totalFindings",
+    "totalChanges",
+    "preservedFindingCount",
+    "statisticalWatermark",
+    "cleanedText"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filename", "characterCount"],
+      "properties": {
+        "filename": { "type": ["string", "null"] },
+        "characterCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["safe", "aggressive"]
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "totalFindings": { "type": "integer", "minimum": 0 },
+    "totalChanges": { "type": "integer", "minimum": 0 },
+    "preservedFindingCount": { "type": "integer", "minimum": 0 },
+    "statisticalWatermark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "explanation"],
+      "properties": {
+        "status": { "type": "string", "const": "not-verifiable" },
+        "explanation": { "type": "string", "minLength": 1 }
+      }
+    },
+    "cleanedText": { "type": "string" }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "codePoint", "index", "description"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "zero-width",
+            "joiner",
+            "bidirectional-control",
+            "unicode-tag",
+            "soft-hyphen",
+            "exotic-space",
+            "line-separator"
+          ]
+        },
+        "codePoint": { "type": "string", "pattern": "^U\\+[0-9A-F]{4,6}$" },
+        "index": { "type": "integer", "minimum": 0 },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

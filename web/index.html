@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Claude Watermark Remover — local inspection &amp; cleaning</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>Claude Watermark Remover</h1>
+    <p class="tagline">
+      Runs entirely in this browser tab. Inspecting, cleaning, and diffing text never leaves your device.
+    </p>
+  </header>
+
+  <main>
+    <section aria-labelledby="input-heading" class="panel">
+      <h2 id="input-heading">1. Provide text</h2>
+      <div class="input-row">
+        <label for="text-input" class="visually-hidden">Text to inspect</label>
+        <textarea
+          id="text-input"
+          data-testid="text-input"
+          placeholder="Paste text here, or upload a file below…"
+          rows="10"
+        ></textarea>
+      </div>
+      <div class="input-row">
+        <label for="file-input">Or upload a text file:</label>
+        <input type="file" id="file-input" data-testid="file-input" accept=".txt,.md,.markdown,text/plain,text/markdown" />
+      </div>
+      <fieldset class="mode-fieldset">
+        <legend>Cleaning mode</legend>
+        <label>
+          <input type="radio" name="mode" value="safe" checked data-testid="mode-safe" />
+          Safe — preserves ZWNJ/ZWJ joiners used by Persian, Arabic-derived scripts, Indic text, and emoji sequences
+        </label>
+        <label>
+          <input type="radio" name="mode" value="aggressive" data-testid="mode-aggressive" />
+          Aggressive — also removes ZWNJ/ZWJ joiners; may alter language shaping or emoji rendering
+        </label>
+      </fieldset>
+    </section>
+
+    <section aria-labelledby="findings-heading" class="panel">
+      <h2 id="findings-heading">2. Findings</h2>
+      <p id="findings-summary" data-testid="findings-summary" aria-live="polite">No text provided yet.</p>
+      <p class="disclaimer">
+        <strong>Statistical watermark status:</strong> not verifiable. Anthropic has not published a public
+        detector or technical detection specification, so no result here can confirm or rule out a model-level
+        watermark — only these deterministic Unicode artifacts are inspected.
+      </p>
+      <ul id="findings-list" data-testid="findings-list"></ul>
+    </section>
+
+    <section aria-labelledby="diff-heading" class="panel">
+      <h2 id="diff-heading">3. Before / after</h2>
+      <div class="diff-grid">
+        <div>
+          <h3>Before <span class="legend"><mark class="mark-removed">removed</mark> <mark class="mark-normalized">normalized</mark> <mark class="mark-preserved">preserved</mark></span></h3>
+          <pre id="diff-before" data-testid="diff-before" class="diff-pane"></pre>
+        </div>
+        <div>
+          <h3>After</h3>
+          <pre id="diff-after" data-testid="diff-after" class="diff-pane"></pre>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" id="copy-cleaned" data-testid="copy-cleaned">Copy cleaned text</button>
+        <button type="button" id="download-cleaned" data-testid="download-cleaned">Download cleaned text (.txt)</button>
+        <button type="button" id="download-report" data-testid="download-report">Download JSON report</button>
+        <span id="action-status" data-testid="action-status" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <section aria-labelledby="provenance-heading" class="panel">
+      <h2 id="provenance-heading">4. Image provenance (C2PA / XMP / EXIF) — inspect only</h2>
+      <p>
+        Upload a PNG, JPEG, or SVG to look for embedded provenance markers. This is inspect-only: the file is
+        never modified, and nothing is uploaded anywhere.
+      </p>
+      <label for="image-input">Image file:</label>
+      <input type="file" id="image-input" data-testid="image-input" accept="image/png,image/jpeg,.svg,image/svg+xml" />
+      <div id="provenance-result" data-testid="provenance-result" aria-live="polite"></div>
+    </section>
+
+    <details class="panel" id="rewrite-panel">
+      <summary><h2 class="inline-heading">5. Optional: send text to a rewrite provider (network — off by default)</h2></summary>
+      <p class="disclaimer">
+        This feature is <strong>never required</strong> for inspecting or cleaning text above. Enabling it sends
+        your text over the network to the endpoint you configure. This project does not control that provider's
+        retention policy. No credentials are required for any local feature on this page.
+      </p>
+      <form id="rewrite-form" data-testid="rewrite-form">
+        <label for="rewrite-endpoint">OpenAI-compatible endpoint URL</label>
+        <input type="url" id="rewrite-endpoint" data-testid="rewrite-endpoint" placeholder="http://localhost:11434/v1/chat/completions" required />
+
+        <label for="rewrite-model">Model</label>
+        <input type="text" id="rewrite-model" data-testid="rewrite-model" placeholder="gpt-4o-mini" required />
+
+        <label for="rewrite-key">API key (optional — never required for local/self-hosted servers)</label>
+        <input type="password" id="rewrite-key" data-testid="rewrite-key" autocomplete="off" />
+
+        <label for="rewrite-timeout">Timeout (ms)</label>
+        <input type="number" id="rewrite-timeout" data-testid="rewrite-timeout" value="30000" min="1000" step="1000" />
+
+        <div id="rewrite-disclosure" data-testid="rewrite-disclosure" class="disclosure-box" aria-live="polite"></div>
+
+        <label class="consent-label">
+          <input type="checkbox" id="rewrite-consent" data-testid="rewrite-consent" />
+          I understand the text above will be sent to the endpoint above.
+        </label>
+
+        <div class="actions">
+          <button type="submit" id="rewrite-send" data-testid="rewrite-send" disabled>Send for rewrite</button>
+          <button type="button" id="rewrite-cancel" data-testid="rewrite-cancel" disabled>Cancel</button>
+        </div>
+      </form>
+      <div id="rewrite-result" data-testid="rewrite-result" aria-live="polite"></div>
+    </details>
+  </main>
+
+  <footer class="page-footer">
+    <p>
+      Not affiliated with or endorsed by Anthropic. This is an editorial hygiene and inspection tool, not a
+      watermark detector or provenance guarantee. See the project README for full details.
+    </p>
+  </footer>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+:root {
+  color-scheme: light dark;
+  --border: #8888;
+  --removed: #ffb3b3;
+  --normalized: #ffe08a;
+  --preserved: #b3d9ff;
+  --removed-dark: #7a1f1f;
+  --normalized-dark: #7a5a00;
+  --preserved-dark: #1f4e7a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  line-height: 1.5;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.page-header .tagline {
+  color: #666;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.inline-heading {
+  display: inline;
+}
+
+textarea#text-input {
+  width: 100%;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+}
+
+.input-row {
+  margin-bottom: 0.75rem;
+}
+
+.mode-fieldset {
+  border: none;
+  padding: 0;
+}
+
+.mode-fieldset label {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.disclaimer {
+  background: color-mix(in srgb, canvastext 6%, canvas);
+  border-left: 3px solid #888;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.disclosure-box {
+  background: color-mix(in srgb, canvastext 6%, canvas);
+  border-left: 3px solid #b36b00;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+  white-space: pre-line;
+}
+
+#findings-list li {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.diff-pane {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  min-height: 6rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.legend {
+  font-size: 0.75rem;
+  font-weight: normal;
+}
+
+mark {
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+mark.mark-removed {
+  background: var(--removed);
+}
+
+mark.mark-normalized {
+  background: var(--normalized);
+}
+
+mark.mark-preserved {
+  background: var(--preserved);
+}
+
+@media (prefers-color-scheme: dark) {
+  mark.mark-removed {
+    background: var(--removed-dark);
+  }
+  mark.mark-normalized {
+    background: var(--normalized-dark);
+  }
+  mark.mark-preserved {
+    background: var(--preserved-dark);
+  }
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+#rewrite-form label {
+  display: block;
+  margin-top: 0.6rem;
+  font-weight: 600;
+}
+
+#rewrite-form input[type="url"],
+#rewrite-form input[type="text"],
+#rewrite-form input[type="password"],
+#rewrite-form input[type="number"] {
+  width: 100%;
+  padding: 0.35rem;
+}
+
+.consent-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: normal;
+}
+
+.page-footer {
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 2rem;
+}
