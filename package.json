@@ -24,6 +24,9 @@
     "node": ">=20"
   },
   "keywords": [
+    "claude",
+    "claude-watermark",
+    "claude-watermark-remover",
     "ai-content",
     "unicode",
     "text-cleaner",

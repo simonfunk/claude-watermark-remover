@@ -2,6 +2,7 @@ export {
   cleanText,
   inspectText,
   type CleanResult,
+  type CleanOptions,
   type FindingKind,
   type TextFinding,
   type TextInspection,
@@ -12,6 +13,7 @@ export {
   comparePreservedFacts,
   extractProtectedFacts,
   type FactComparison,
+  type DocumentStructure,
   type ProtectedFacts,
   type RewritePromptOptions,
 } from "./rewrite.js";

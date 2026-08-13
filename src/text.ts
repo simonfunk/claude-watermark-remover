@@ -1,5 +1,6 @@
 export type FindingKind =
   | "zero-width"
+  | "joiner"
   | "bidirectional-control"
   | "unicode-tag"
   | "soft-hyphen"
@@ -26,7 +27,12 @@ export interface TextInspection {
 export interface CleanResult {
   text: string;
   findings: TextFinding[];
+  preservedFindings: TextFinding[];
   totalChanges: number;
+}
+
+export interface CleanOptions {
+  removeJoiners?: boolean;
 }
 
 type Rule = {
@@ -39,8 +45,14 @@ type Rule = {
 const RULES: Rule[] = [
   {
     kind: "zero-width",
-    description: "Zero-width character or joiner",
-    pattern: /[\u200B-\u200D\u2060\uFEFF]/gu,
+    description: "Zero-width spacing or word-boundary character",
+    pattern: /[\u200B\u2060\uFEFF]/gu,
+    replacement: "",
+  },
+  {
+    kind: "joiner",
+    description: "Language or emoji shaping joiner (preserved by safe cleaning)",
+    pattern: /[\u200C\u200D]/gu,
     replacement: "",
   },
   {
@@ -108,17 +120,23 @@ export function inspectText(text: string): TextInspection {
   };
 }
 
-export function cleanText(text: string): CleanResult {
+export function cleanText(text: string, options: CleanOptions = {}): CleanResult {
   const inspection = inspectText(text);
   let cleaned = text;
 
   for (const rule of RULES) {
+    if (rule.kind === "joiner" && !options.removeJoiners) continue;
     cleaned = cleaned.replace(rule.pattern, rule.replacement);
   }
+
+  const preservedFindings = inspection.findings.filter(
+    (finding) => finding.kind === "joiner" && !options.removeJoiners,
+  );
 
   return {
     text: cleaned,
     findings: inspection.findings,
-    totalChanges: inspection.totalFindings,
+    preservedFindings,
+    totalChanges: inspection.totalFindings - preservedFindings.length,
   };
 }

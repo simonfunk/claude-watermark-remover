@@ -3,12 +3,25 @@ export interface ProtectedFacts {
   urls: string[];
   identifiers: string[];
   numbers: string[];
+  quotations: string[];
+  markdownLinks: string[];
+}
+
+export interface DocumentStructure {
+  headings: number;
+  listItems: number;
+  fencedCodeBlocks: number;
 }
 
 export interface FactComparison {
   ok: boolean;
   source: ProtectedFacts;
   missing: ProtectedFacts;
+  structure: {
+    ok: boolean;
+    source: DocumentStructure;
+    rewritten: DocumentStructure;
+  };
 }
 
 export interface RewritePromptOptions {
@@ -29,6 +42,8 @@ export function extractProtectedFacts(text: string): ProtectedFacts {
   const emails = matches(text, /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu);
   const urls = matches(text, /https?:\/\/[^\s),;]+/giu);
   const identifiers = matches(text, /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/gu);
+  const quotations = matches(text, /"[^"\n]+"|“[^”\n]+”|‘[^’\n]+’/gu);
+  const markdownLinks = matches(text, /\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)/giu);
 
   const withoutEmailsAndUrls = [...emails, ...urls].reduce(
     (current, fact) => current.replaceAll(fact, " "),
@@ -36,7 +51,15 @@ export function extractProtectedFacts(text: string): ProtectedFacts {
   );
   const numbers = matches(withoutEmailsAndUrls, /\b\d[\d,.]*\b/gu);
 
-  return { emails, urls, identifiers, numbers };
+  return { emails, urls, identifiers, numbers, quotations, markdownLinks };
+}
+
+function extractStructure(text: string): DocumentStructure {
+  return {
+    headings: (text.match(/^#{1,6}\s+.+$/gmu) ?? []).length,
+    listItems: (text.match(/^\s*(?:[-+*]|\d+[.)])\s+.+$/gmu) ?? []).length,
+    fencedCodeBlocks: Math.floor((text.match(/^```/gmu) ?? []).length / 2),
+  };
 }
 
 function missingFacts(source: string[], rewritten: string): string[] {
@@ -53,12 +76,26 @@ export function comparePreservedFacts(
     urls: missingFacts(source.urls, rewrittenText),
     identifiers: missingFacts(source.identifiers, rewrittenText),
     numbers: missingFacts(source.numbers, rewrittenText),
+    quotations: missingFacts(source.quotations, rewrittenText),
+    markdownLinks: missingFacts(source.markdownLinks, rewrittenText),
   };
+  const sourceStructure = extractStructure(sourceText);
+  const rewrittenStructure = extractStructure(rewrittenText);
+  const structureOk = Object.keys(sourceStructure).every(
+    (key) =>
+      sourceStructure[key as keyof DocumentStructure] ===
+      rewrittenStructure[key as keyof DocumentStructure],
+  );
 
   return {
-    ok: Object.values(missing).every((facts) => facts.length === 0),
+    ok: Object.values(missing).every((facts) => facts.length === 0) && structureOk,
     source,
     missing,
+    structure: {
+      ok: structureOk,
+      source: sourceStructure,
+      rewritten: rewrittenStructure,
+    },
   };
 }
 

@@ -3,13 +3,15 @@ import { readFile } from "node:fs/promises";
 import {
   buildRewritePrompt,
   cleanText,
+  comparePreservedFacts,
   inspectText,
   type RewritePromptOptions,
 } from "./index.js";
 
 const USAGE = `Usage:
   claude-watermark-remover inspect [file] [--json]
-  claude-watermark-remover clean [file] [--json]
+  claude-watermark-remover clean [file] [--json] [--aggressive]
+  claude-watermark-remover verify <source-file> <rewritten-file> [--json]
   claude-watermark-remover prompt [file] [--strength light|strong] [--locale locale] [--brand-voice text]
 
 If no file is supplied, input is read from stdin.
@@ -57,9 +59,34 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (!["inspect", "clean", "prompt"].includes(command)) {
+  if (!["inspect", "clean", "verify", "prompt"].includes(command)) {
     console.error(USAGE);
     process.exitCode = 1;
+    return;
+  }
+
+  if (command === "verify") {
+    const paths = args.filter((arg) => !arg.startsWith("--"));
+    if (paths.length !== 2) {
+      throw new Error("verify requires <source-file> and <rewritten-file>");
+    }
+    const [sourcePath, rewrittenPath] = paths;
+    if (!sourcePath || !rewrittenPath) throw new Error("verify requires two files");
+    const [source, rewritten] = await Promise.all([
+      readFile(sourcePath, "utf8"),
+      readFile(rewrittenPath, "utf8"),
+    ]);
+    const report = comparePreservedFacts(source, rewritten);
+    if (args.includes("--json")) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    } else {
+      process.stdout.write(
+        report.ok
+          ? "Verification passed: protected facts and document structure were preserved.\n"
+          : "Verification failed: protected facts or document structure changed.\n",
+      );
+    }
+    if (!report.ok) process.exitCode = 2;
     return;
   }
 
@@ -78,7 +105,7 @@ async function main(): Promise<void> {
   }
 
   if (command === "clean") {
-    const result = cleanText(text);
+    const result = cleanText(text, { removeJoiners: args.includes("--aggressive") });
     if (args.includes("--json")) {
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
       return;

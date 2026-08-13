@@ -33,3 +33,21 @@ test("inspectText distinguishes deterministic findings from statistical watermar
   assert.equal(report.statisticalWatermark.status, "not-verifiable");
   assert.match(report.statisticalWatermark.explanation, /detector/i);
 });
+
+test("safe cleaning preserves language and emoji joiners while reporting them", () => {
+  const input = "می\u200Cخواهم 👩\u200D💻";
+  const report = inspectText(input);
+  const result = cleanText(input);
+
+  assert.equal(result.text, input);
+  assert.equal(report.findings.filter((finding) => finding.kind === "joiner").length, 2);
+  assert.equal(result.totalChanges, 0);
+  assert.equal(result.preservedFindings.length, 2);
+});
+
+test("aggressive cleaning removes joiners only when explicitly enabled", () => {
+  const result = cleanText("A\u200CB\u200DC", { removeJoiners: true });
+
+  assert.equal(result.text, "ABC");
+  assert.equal(result.totalChanges, 2);
+});

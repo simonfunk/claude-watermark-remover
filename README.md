@@ -11,7 +11,8 @@ It was built in response to the August 2026 discussion around model-level text w
 - Unicode tag characters
 - soft hyphens
 - exotic spaces and Unicode line separators
-- whether numbers, URLs, email addresses, and code-like identifiers survive a rewrite
+- whether numbers, URLs, email addresses, code-like identifiers, exact quotations, and Markdown links survive a rewrite
+- whether Markdown headings, list items, and fenced code blocks keep the same structure
 
 ## What it cannot verify
 
@@ -46,6 +47,7 @@ Read from a file:
 ```bash
 npm run dev -- inspect draft.md --json
 npm run dev -- clean draft.md
+npm run dev -- clean draft.md --aggressive # also remove ZWNJ/ZWJ; may alter language or emoji shaping
 ```
 
 Create a safe rewrite request for an LLM of your choice:
@@ -58,6 +60,16 @@ npm run dev -- prompt draft.md \
 ```
 
 `prompt` prints JSON containing separate `system` and `user` messages. It does not send the source text anywhere.
+
+Safe cleaning preserves ZWNJ/ZWJ characters because they can be meaningful in Persian, Arabic-derived scripts, Indic text, and emoji sequences. `--aggressive` removes them only when explicitly requested.
+
+Compare an original file with a rewritten version:
+
+```bash
+npm run dev -- verify original.md rewritten.md --json
+```
+
+`verify` exits with status `0` when protected facts and Markdown structure are preserved, and status `2` when something changed or disappeared.
 
 After an external rewrite, the library API can verify preserved facts:
 
@@ -115,8 +127,7 @@ The test suite covers Unicode inspection/cleaning, multilingual preservation, re
 
 ## Roadmap
 
-- browser demo with fully local deterministic inspection
-- richer protected-fact extraction
+- local browser demo with fully local inspection, before/after diff, and downloadable reports
 - optional provider adapters with explicit retention disclosures
 - C2PA inspection without destructive removal defaults
 - machine-readable JSON Schema for reports

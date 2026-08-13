@@ -25,6 +25,13 @@ test("CLI clean writes cleaned text to stdout", () => {
   assert.equal(result.stdout, "Hello world");
 });
 
+test("CLI aggressive cleaning removes shaping joiners only when requested", () => {
+  const result = runCli(["clean", "--aggressive"], "A\u200CB\u200DC");
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "ABC");
+});
+
 test("CLI prompt emits a safe rewrite request as JSON", () => {
   const result = runCli(["prompt", "--strength", "strong", "--locale", "de"], "Ein Text mit 42 Fakten.");
 
@@ -39,4 +46,21 @@ test("CLI rejects unknown commands with a non-zero exit", () => {
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Usage:/);
+});
+
+test("CLI verify compares a source and rewrite end to end", () => {
+  const result = runCli([
+    "verify",
+    "tests/fixtures/source.md",
+    "tests/fixtures/rewrite.md",
+    "--json",
+  ]);
+
+  assert.equal(result.status, 2, result.stderr);
+  const report = JSON.parse(result.stdout) as {
+    ok: boolean;
+    missing: { numbers: string[] };
+  };
+  assert.equal(report.ok, false);
+  assert.deepEqual(report.missing.numbers, ["42"]);
 });
