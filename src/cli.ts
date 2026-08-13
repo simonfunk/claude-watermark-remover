@@ -8,9 +8,9 @@ import {
 } from "./index.js";
 
 const USAGE = `Usage:
-  ai-content-cleaner inspect [file] [--json]
-  ai-content-cleaner clean [file] [--json]
-  ai-content-cleaner prompt [file] [--strength light|strong] [--locale locale] [--brand-voice text]
+  claude-watermark-remover inspect [file] [--json]
+  claude-watermark-remover clean [file] [--json]
+  claude-watermark-remover prompt [file] [--strength light|strong] [--locale locale] [--brand-voice text]
 
 If no file is supplied, input is read from stdin.
 

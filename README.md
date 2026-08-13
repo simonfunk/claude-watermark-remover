@@ -1,4 +1,4 @@
-# AI Content Cleaner
+# Claude Watermark Remover
 
 A privacy-first toolkit for inspecting and cleaning deterministic text artifacts, preparing substantial editorial rewrites, and checking that important facts survive a rewrite.
 
@@ -15,15 +15,17 @@ It was built in response to the August 2026 discussion around model-level text w
 
 ## What it cannot verify
 
-AI Content Cleaner does **not** claim to detect or remove Claude's statistical model-level watermark. Anthropic has described embedded text watermarks but has not published a public detector or complete technical detection specification. A substantial rewrite may change a statistical signal, but no result from this project certifies detector evasion.
+Claude Watermark Remover inspects and removes detectable hidden Unicode artifacts locally and provides a controlled rewrite workflow for AI-generated text.
+
+It does **not** claim to detect or guarantee removal of Claude's undisclosed statistical model-level watermark. Anthropic has described embedded text watermarks but has not published a public detector or complete technical detection specification. A substantial rewrite may change a statistical signal, but no result from this project certifies detector evasion.
 
 This is an editorial hygiene tool—not an authorship detector, cheating tool, or provenance guarantee.
 
 ## Install
 
 ```bash
-git clone https://github.com/simonfunk/ai-content-cleaner.git
-cd ai-content-cleaner
+git clone https://github.com/simonfunk/claude-watermark-remover.git
+cd claude-watermark-remover
 npm install --include=dev
 npm run check
 ```
@@ -60,7 +62,7 @@ npm run dev -- prompt draft.md \
 After an external rewrite, the library API can verify preserved facts:
 
 ```ts
-import { comparePreservedFacts } from "ai-content-cleaner";
+import { comparePreservedFacts } from "claude-watermark-remover";
 
 const result = comparePreservedFacts(source, rewritten);
 if (!result.ok) {
@@ -77,7 +79,7 @@ import {
   buildRewritePrompt,
   extractProtectedFacts,
   comparePreservedFacts,
-} from "ai-content-cleaner";
+} from "claude-watermark-remover";
 ```
 
 ### Honest result language

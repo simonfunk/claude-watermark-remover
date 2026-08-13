@@ -1,10 +1,10 @@
 {
-  "name": "ai-content-cleaner",
+  "name": "claude-watermark-remover",
   "version": "0.1.0",
   "description": "Privacy-first AI text hygiene, inspection, and rewrite preparation toolkit",
   "type": "module",
   "bin": {
-    "ai-content-cleaner": "./dist/cli.js"
+    "claude-watermark-remover": "./dist/cli.js"
   },
   "exports": {
     ".": "./dist/index.js"
