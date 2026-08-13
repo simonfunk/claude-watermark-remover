@@ -40,6 +40,20 @@ function readAsciiSlice(bytes: Uint8Array, start: number, end: number): string {
     .join("");
 }
 
+function hasJumbfManifestBox(bytes: Uint8Array, start: number, end: number): boolean {
+  if (start < 0 || end > bytes.length || end - start < 20) return false;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const outerLength = view.getUint32(start, false);
+  if (outerLength < 20 || start + outerLength > end) return false;
+  if (readAsciiSlice(bytes, start + 4, start + 8) !== "jumb") return false;
+
+  const childStart = start + 8;
+  const childLength = view.getUint32(childStart, false);
+  if (childLength < 12 || childStart + childLength > start + outerLength) return false;
+  if (readAsciiSlice(bytes, childStart + 4, childStart + 8) !== "jumd") return false;
+  return readAsciiSlice(bytes, childStart + 8, childStart + childLength).includes("c2pa");
+}
+
 function detectFileType(bytes: Uint8Array): ProvenanceFileType {
   if (matchesSignature(bytes, PNG_SIGNATURE)) return "png";
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpeg";
@@ -63,7 +77,9 @@ function inspectPng(bytes: Uint8Array): ProvenanceSignal[] {
     const dataEnd = dataStart + length;
     if (dataEnd > bytes.length) break;
 
-    if (type === "caBX") {
+    const hasJumbfManifest = hasJumbfManifestBox(bytes, dataStart, dataEnd);
+
+    if (type === "caBX" && hasJumbfManifest) {
       signals.push({
         kind: "c2pa-jumbf",
         location: "PNG chunk caBX",
@@ -129,11 +145,11 @@ function inspectJpeg(bytes: Uint8Array): ProvenanceSignal[] {
       const appNumber = marker - 0xe0;
       const prefix = readAsciiSlice(bytes, payloadStart, Math.min(payloadEnd, payloadStart + 32));
 
-      const app11Payload = readAsciiSlice(bytes, payloadStart, payloadEnd);
       const isJpegXtJumbf =
         appNumber === 11 &&
         prefix.startsWith("JP") &&
-        (app11Payload.includes("jumb") || app11Payload.includes("jumd"));
+        payloadEnd - payloadStart >= 8 &&
+        hasJumbfManifestBox(bytes, payloadStart + 8, payloadEnd);
 
       if (isJpegXtJumbf) {
         signals.push({
@@ -173,7 +189,7 @@ function inspectSvg(bytes: Uint8Array): ProvenanceSignal[] {
   const signals: ProvenanceSignal[] = [];
   const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 
-  if (/xmlns:c2pa\s*=|<c2pa:manifest\b/i.test(text)) {
+  if (/<c2pa:manifest\b/i.test(text)) {
     signals.push({
       kind: "c2pa-jumbf",
       location: "SVG c2pa namespace/element",

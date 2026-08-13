@@ -39,10 +39,11 @@ A standalone, dependency-light local UI is served directly from this repository 
 external CDN, no account.
 
 ```bash
+npm run build
 npm start
 ```
 
-This builds the library and serves `web/` at `http://localhost:4300/`. Inspecting, cleaning, and
+This builds the library, then serves `web/` at `http://localhost:4300/`. Inspecting, cleaning, and
 the before/after diff all run **entirely in your browser tab**; nothing about your text is sent
 anywhere unless you explicitly open the optional rewrite panel and submit a request (see below).
 

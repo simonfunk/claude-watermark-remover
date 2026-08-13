@@ -42,6 +42,10 @@ function pngChunk(type, data) {
   return Buffer.concat([u32be(data.length), body, u32be(crc32(body))]);
 }
 
+function box(type, data) {
+  return Buffer.concat([u32be(data.length + 8), Buffer.from(type, "ascii"), data]);
+}
+
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function buildPng({ includeC2pa, includeXmp }) {
@@ -61,8 +65,8 @@ function buildPng({ includeC2pa, includeXmp }) {
     // Approximates a C2PA JUMBF box embedded in the PNG-private "caBX" ancillary chunk.
     // Real JUMBF/CBOR manifest structure is far larger; this is a representative stand-in
     // that carries the recognizable "jumb"/"jumd"/"c2pa" box markers our inspector looks for.
-    const jumd = Buffer.concat([Buffer.from("jumd", "ascii"), Buffer.from("c2pa", "ascii"), Buffer.alloc(8)]);
-    const jumb = Buffer.concat([Buffer.from("jumb", "ascii"), jumd]);
+    const jumd = box("jumd", Buffer.concat([Buffer.from("c2pa", "ascii"), Buffer.alloc(8)]));
+    const jumb = box("jumb", jumd);
     chunks.push(pngChunk("caBX", jumb));
   }
 
@@ -121,8 +125,8 @@ function buildJpeg({ includeC2pa, includeXmp, includeExif }) {
     const commonIdentifier = Buffer.from("JP", "ascii");
     const boxInstanceNumber = Buffer.from([0x00, 0x01]);
     const packetSequenceNumber = Buffer.from([0x00, 0x00, 0x00, 0x01]);
-    const jumd = Buffer.concat([Buffer.from("jumd", "ascii"), Buffer.from("c2pa", "ascii"), Buffer.alloc(8)]);
-    const jumb = Buffer.concat([Buffer.from("jumb", "ascii"), jumd]);
+    const jumd = box("jumd", Buffer.concat([Buffer.from("c2pa", "ascii"), Buffer.alloc(8)]));
+    const jumb = box("jumb", jumd);
     segments.push(
       marker(0xeb, Buffer.concat([commonIdentifier, boxInstanceNumber, packetSequenceNumber, jumb])),
     );

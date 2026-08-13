@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "node --import tsx --test tests/*.test.ts",
-    "check": "npm test && npm run build",
+    "check": "npm run build && npm test",
     "dev": "node --import tsx src/cli.ts",
     "serve": "node scripts/serve.mjs",
     "start": "npm run serve",

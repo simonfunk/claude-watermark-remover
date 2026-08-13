@@ -12,3 +12,10 @@ test("published package includes every runtime file required by npm start", asyn
   assert.ok(packageJson.files.includes("web"), "web UI must be published");
   assert.ok(packageJson.files.includes("scripts/serve.mjs"), "runtime server must be published");
 });
+
+test("check builds dist before tests that exercise the production server", async () => {
+  const packageJson = JSON.parse(await readFile("package.json", "utf8")) as {
+    scripts: Record<string, string>;
+  };
+  assert.equal(packageJson.scripts.check, "npm run build && npm test");
+});

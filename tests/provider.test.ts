@@ -4,6 +4,7 @@ import {
   createOpenAiCompatibleAdapter,
   RewriteAbortedError,
   RewriteInputTooLargeError,
+  RewriteProviderError,
   RewriteTimeoutError,
 } from "../src/index.js";
 
@@ -41,6 +42,22 @@ test("createOpenAiCompatibleAdapter rejects malformed and non-HTTP endpoints", (
       () => createOpenAiCompatibleAdapter({ endpoint, model: "test" }),
       /HTTP\(S\)|endpoint/i,
     );
+  }
+});
+
+test("createOpenAiCompatibleAdapter rejects credentials and invalid limits", () => {
+  const invalidConfigs = [
+    { endpoint: "https://user:pass@example.com/v1/chat/completions", model: "test" },
+    { endpoint: "https://api.example.com/v1/chat/completions", model: "" },
+    { endpoint: "https://api.example.com/v1/chat/completions", model: "   " },
+    { endpoint: "https://api.example.com/v1/chat/completions", model: "test", timeoutMs: 0 },
+    { endpoint: "https://api.example.com/v1/chat/completions", model: "test", timeoutMs: Number.NaN },
+    { endpoint: "https://api.example.com/v1/chat/completions", model: "test", maxInputCharacters: -1 },
+    { endpoint: "https://api.example.com/v1/chat/completions", model: "test", maxInputCharacters: 1.5 },
+  ];
+
+  for (const config of invalidConfigs) {
+    assert.throws(() => createOpenAiCompatibleAdapter(config), RewriteProviderError);
   }
 });
 

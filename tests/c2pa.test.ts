@@ -27,6 +27,22 @@ test("inspectProvenance reports no signals for a plain PNG", async () => {
   assert.deepEqual(result.signals, []);
 });
 
+test("inspectProvenance rejects caBX substring bait without valid JUMBF boxes", () => {
+  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  const payload = [...Buffer.from("jumb-jumd-c2pa-but-no-box-structure")];
+  const length = payload.length;
+  const bytes = new Uint8Array([
+    ...signature,
+    (length >>> 24) & 0xff, (length >>> 16) & 0xff, (length >>> 8) & 0xff, length & 0xff,
+    ...Buffer.from("caBX"), ...payload,
+    0, 0, 0, 0,
+  ]);
+
+  const result = inspectProvenance(bytes, "arbitrary-cabx.png");
+  assert.equal(result.hasC2paCandidate, false);
+  assert.deepEqual(result.signals, []);
+});
+
 test("inspectProvenance detects a C2PA APP11 candidate, EXIF, and XMP in a JPEG", async () => {
   const result = inspectProvenance(await fixture("c2pa.jpg"), "c2pa.jpg");
 
@@ -69,6 +85,15 @@ test("inspectProvenance reports no signals for a plain SVG", async () => {
   assert.deepEqual(result.signals, []);
 });
 
+test("inspectProvenance does not treat a namespace declaration alone as a C2PA manifest candidate", () => {
+  const bytes = new TextEncoder().encode(
+    '<svg xmlns="http://www.w3.org/2000/svg" xmlns:c2pa="http://c2pa.org/manifest"></svg>',
+  );
+  const result = inspectProvenance(bytes, "namespace-only.svg");
+  assert.equal(result.hasC2paCandidate, false);
+  assert.deepEqual(result.signals, []);
+});
+
 test("inspectProvenance never claims cryptographic authenticity", async () => {
   const result = inspectProvenance(await fixture("c2pa.png"), "c2pa.png");
 
@@ -92,7 +117,7 @@ test("inspectProvenance module exposes no removal or stripping function", async 
 });
 
 test("inspectProvenance does not mistake an arbitrary JPEG APP11 segment for JUMBF", () => {
-  const payload = Buffer.from("not-jumbf");
+  const payload = Buffer.from("JP\x00\x01\x00\x00\x00\x01jumb-jumd-c2pa-but-no-box-structure");
   const length = payload.length + 2;
   const bytes = new Uint8Array([
     0xff, 0xd8,

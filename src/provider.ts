@@ -107,9 +107,21 @@ export function createOpenAiCompatibleAdapter(config: RewriteProviderConfig): Re
   if (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") {
     throw new RewriteProviderError("Rewrite endpoint must be a valid HTTP(S) URL.");
   }
+  if (endpoint.username || endpoint.password) {
+    throw new RewriteProviderError("Rewrite endpoint must not contain credentials.");
+  }
+  if (!config.model.trim()) {
+    throw new RewriteProviderError("Rewrite model must not be empty.");
+  }
   const endpointUrl = endpoint.toString();
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxInputCharacters = config.maxInputCharacters ?? DEFAULT_MAX_INPUT_CHARACTERS;
+  if (!Number.isFinite(timeoutMs) || !Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new RewriteProviderError("Rewrite timeout must be a positive integer.");
+  }
+  if (!Number.isFinite(maxInputCharacters) || !Number.isInteger(maxInputCharacters) || maxInputCharacters <= 0) {
+    throw new RewriteProviderError("Maximum input characters must be a positive integer.");
+  }
 
   const disclosure: RewriteProviderDisclosure = {
     providerName: "openai-compatible",
